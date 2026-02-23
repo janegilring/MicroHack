@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Create a custom "Deployment Validator" RBAC role and assign it to a group along with Security Reader role.
+    Create a custom "Deployment Validator" RBAC role and assign it to a group along with Security Reader and Resource Policy Contributor roles.
 
 .DESCRIPTION
     This script is intended for MicroHack coaches who are preparing pre-provisioned Azure subscriptions
@@ -16,6 +16,9 @@
     - Read resource group information
 
     The Security Reader role provides read-only access to security-related resources and settings.
+
+    The Resource Policy Contributor role allows managing resource policies, including creating/modifying
+    policy assignments and definitions.
 
     This setup ensures lab participants have the necessary permissions to complete MicroHack exercises
     while maintaining appropriate security boundaries in pre-provisioned subscriptions.
@@ -53,6 +56,8 @@
     https://learn.microsoft.com/azure/role-based-access-control/custom-roles
 .LINK
     https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#security-reader
+.LINK
+    https://learn.microsoft.com/azure/role-based-access-control/built-in-roles#resource-policy-contributor
 #>
 
 [CmdletBinding()]
@@ -454,6 +459,25 @@ if ($existingSecurityReaderAssignment) {
     }
 }
 
+# Assign the Resource Policy Contributor role
+Write-Host "`nAssigning 'Resource Policy Contributor' role to group '$GroupName'..." -ForegroundColor Cyan
+
+$existingResourcePolicyContributorAssignment = Get-AzRoleAssignment -ObjectId $objectId -RoleDefinitionName "Resource Policy Contributor" -Scope "/subscriptions/$subId" -ErrorAction SilentlyContinue
+
+if ($existingResourcePolicyContributorAssignment) {
+    Write-Host "Group already has 'Resource Policy Contributor' role assigned." -ForegroundColor Yellow
+} else {
+    try {
+        New-AzRoleAssignment `
+            -ObjectId $objectId `
+            -RoleDefinitionName "Resource Policy Contributor" `
+            -Scope "/subscriptions/$subId" | Out-Null
+        Write-Host "'Resource Policy Contributor' role assigned successfully." -ForegroundColor Green
+    } catch {
+        Write-Error "Failed to assign 'Resource Policy Contributor' role: $($_.Exception.Message)"
+    }
+}
+
 # Display summary
 Write-Host "`n" + ("=" * 80) -ForegroundColor Cyan
 Write-Host "SUMMARY" -ForegroundColor Cyan
@@ -466,5 +490,6 @@ Write-Host ""
 Write-Host "Roles Assigned:" -ForegroundColor Yellow
 Write-Host "  1. Deployment Validator (Custom)" -ForegroundColor Green
 Write-Host "  2. Security Reader (Built-in)" -ForegroundColor Green
+Write-Host "  3. Resource Policy Contributor (Built-in)" -ForegroundColor Green
 Write-Host ""
 Write-Host "Configuration complete!" -ForegroundColor Green
